@@ -30,39 +30,6 @@ def retrieve_nowait(q):
     return item
 
 ################################################################################
-
-##### Robot Arm Servo Angles #####
-'''
-INPUT:
-coin_letter  # This will be the letter of the coin that is ready to be sorted.
-
-OUTPUT:
-may need to output PWM signal value for all the servos so they stay in a 
-constant position. This may not be necessary if no PWM singla doesn't change
-servo position and servos apply torque with no PWM signal
-
-DESCRIPTION:
-With the inputted coin_letter this will return the servo angle values for the
-arm to be in position above the coin_letter bin. coin_letter is the key to the
-dictionary which will contain a 1x4 row vector where each column 'i' represents
-the corresponding servos angle. 
-'''
-def robot_arm_position(coin_letter):
-    servo_angles = {'P': [0,1,2,3],
-                    'N': [4,5,6,7],
-                    'D': [8,9,10,11],
-                    'Q': [12,13,14,15],
-                    'L': [16,17,18,19],
-                    'T': [20,21,22,23],
-                    'U': [24,25,26,27]}
-    
-    return servo_angles[coin_letter]
-    # each of the values in the dictionary list will be the servo angle
-    # ex) for P 0 = servo_0 angle, 1 = servo_1 angle ...
-    # The servo angles must be converted from inverse kinematics definition
-    # to servo angle definition. ie) the zeros may be defined differently 
-
-################################################################################
 ################################################################################
 
 ########## CLASS DEFINITIONS ##########
@@ -342,7 +309,44 @@ sorted, will cause a shutdown of the task.
 see flowchart "robot_task" for more information
 '''
 def robot_task()
-    while True:
+
+########## FUNCTION DEFINITIONS ##########
+
+	##### Robot Arm Servo Angles #####
+	'''
+	INPUT:
+	coin_letter  # This will be the letter of the coin that is ready to be sorted.
+
+	OUTPUT:
+	may need to output PWM signal value for all the servos so they stay in a 
+	constant position. This may not be necessary if no PWM singla doesn't change
+	servo position and servos apply torque with no PWM signal
+
+	DESCRIPTION:
+	With the inputted coin_letter this will return the servo angle values for the
+	arm to be in position above the coin_letter bin. coin_letter is the key to the
+	dictionary which will contain a 1x4 row vector where each column 'i' represents
+	the corresponding servos angle. 
+	'''
+	def robot_arm_position(coin_letter):
+	    servo_angles = {'P': [0,1,2,3],
+	                    'N': [4,5,6,7],
+	                    'D': [8,9,10,11],
+	                    'Q': [12,13,14,15],
+	                    'L': [16,17,18,19],
+	                    'T': [20,21,22,23],
+	                    'U': [24,25,26,27]}
+    
+		return servo_angles[coin_letter]
+    	# each of the values in the dictionary list will be the servo angle
+    	# ex) for P 0 = servo_0 angle, 1 = servo_1 angle ...
+    	# The servo angles must be converted from inverse kinematics definition
+    	# to servo angle definition. ie) the zeros may be defined differently 
+
+################################################################################
+
+##### Main Task #####
+	while True:
 	    if conveyor_task.isAlive() 
             # run code to pick up coin
             # robot_arm_position(coin_letter) function
