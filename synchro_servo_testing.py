@@ -1,10 +1,10 @@
 from threading import Thread
+import threading
 from random import random
 import Queue
 import time
 
 
-# define function to get stuff out of queue
 def retrieve_nowait(q):
     try:
         item = q.get_nowait()
@@ -15,122 +15,151 @@ def retrieve_nowait(q):
 # create queue items
 items = ['A','B','C','D','E','F','G','H','I','J']
 
-# initialize 1 queue for each servo
-q0 = Queue.Queue()
-q1 = Queue.Queue()
-q2 = Queue.Queue()
-q3 = Queue.Queue()
 
-# define function that will place all the items into the queues
-def put_in_q():
-    for letter in items:
-        q0.put_nowait(letter)
-        q1.put_nowait(letter)
-        q2.put_nowait(letter)
-        q3.put_nowait(letter)
+################################################################################
+'''
+INPUT:
+num_servos  # The number of servos that are to be syncrhonized with eachother
 
-###############################################
-
-# synchro class used to sync servo threads
-class synchro():
-    
-    def __init__(self):
-        self.IR = 0
-        
-        self.letter_0 = None
-        self.letter_1 = None
-        self.letter_2 = None
-        self.letter_3 = None
-
-# randomly trips the IR sensor to act as if coin broke sensor beam
-def IR_sensor():
-    time.sleep(random()/20)
-    count = 0
-    while True:
-        rand = random()
-        if rand >= 0.8 and count <= 9:
-            count = count +1
-            synchro.IR += 1
-            #print rand
-        elif count > 9:
-            break
-        else:
-            time.sleep(random()/20)
+DESCRIPTION:
+Constructor of servo_threads instance. Initializes important information to
+initial value. coin_denom is the denomination of the coin that is being
+sorted. servo_done is a counter that keeps track of the number of servos
+that have completed thier loop. IR_count is a counter for the number
+of coins that have brokent the IR sensor beam. run is a boolean value
+that is True while the tasks are running and only set to False once the
+tasks have completed, ie the pragram is being shutdown.
+'''
+class servo_threads():
+    def __init__(self, num_servos):
+        self.num_servos = num_servos
+        self.coin_denom = None
+        self.servo_done = 0
+        self.IR_count = 0
+        self.run = True
 
 
-# all the servo thread functions
-# Each servo will print its number along with the letter from the queue that it retrieved, ie 0 A 0.
-# Because the threads are synchronized all 4 servos should print their numbers and letters around the same time and 
-# all 4 servos should print the same letter in succession before the next letter is printed.
-def servo_0():
-    time.sleep(random()/20) # random wait time to simulate real world start conditions
-    while IR.is_alive():
-        if synchro.IR > 0:
-            synchro.letter_0 = retrieve_nowait(q0)
-            while True:
-                if synchro.letter_0 == synchro.letter_1 and synchro.letter_2 == synchro.letter_3 and synchro.letter_0 == synchro.letter_2:
-                    synchro.IR -= 1
-                    print 0, synchro.letter_0, 0
-                    break
+    def ServoStart(self):
+    '''
+    DESCRIPTION:
+    Will only start performing actions once the IR sensor has been tripped.
+    When this occurs a coin denomination will be retrieved from the coin_queue.
+    The previous event of servo_complete will be set to False because the
+    current loop servos cannot be completed if the loop hasn't started yet.
+    The loop is then started with servo_start.set(), this sets the event value
+    to True. Then the funciton will wait until all the servos have completed
+    their loop, this is specified by the servo_complete event which is set to
+    True inside the ServoComplete function.    
+    '''
+        while self.run:
+            if self.IR_count > 0:
+                self.coin_denom = retrieve_nowait(coin_queue) # retrieve coin denomination from queue
+                servo_complete.clear() # clear previous set() of servo_complete
+                servo_start.set() # set() so the servos can run
+                servo_complete.wait() # wait for all the servos to be completed
+
+
+    def ServoComplete(self):
+    '''
+    DESCRIPTION:
+    Will only start performing actions once all the servos have completed thier
+    current loop. When this happens the servo_done value is reset back to 0, to
+    signify that 0 servos have done thier loop. The IR_count value will be
+    decremented by 1 because one coin has been sorted and then the
+    servo_complete will be set to True allowing ServoStart to finish its loop.
+    '''
+        while self.run:
+            if self.servo_done == self.num_servos:
+                self.servo_done = 0 # clear the completed servos
+                self.IR_count -= 1
+                servo_complete.set() # set() so ServoStart() may continue
+
                 
-def servo_1():
-    time.sleep(random()/20) # random wait time to simulate real world start conditions
-    while IR.is_alive():
-        if synchro.IR:
-            synchro.letter_1 = retrieve_nowait(q1)
-            while True:
-                if synchro.letter_0 == synchro.letter_1 and synchro.letter_2 == synchro.letter_3 and synchro.letter_0 == synchro.letter_2:
-                    #synchro.IR = False
-                    print 1, synchro.letter_1, 1
-                    break
+    def servo(self, servo_num):
+    '''
+    INPUT:
+    thread_num  # The number of the servo in the range of [0,num_servos-1]
+    
+    DESCRIPTION:
+    Will only start performing actions once the servo_start event is set to
+    True by the ServoStart function. Once the function is started it will
+    travel to servo_num's specified angle to pick up the coin, then travel
+    to servo_num's specified angle to have the arm above the proper bin,
+    travel to servo_num's specified angle to drop the coin, and then
+    travel back the the initial position by having the servo go to servo_num's
+    specified angle for the inital position.
+    '''
+        while self.run:
+            servo_start.wait() # waits for servo event to start
 
-def servo_2():
-    time.sleep(random()/20) # random wait time to simulate real world start conditions
-    while IR.is_alive():
-        if synchro.IR:
-            synchro.letter_2 = retrieve_nowait(q2)
-            while True:
-                if synchro.letter_0 == synchro.letter_1 and synchro.letter_2 == synchro.letter_3 and synchro.letter_0 == synchro.letter_2:
-                    #synchro.IR = False
-                    print 2, synchro.letter_2, 2
-                    break
+            # This code needs to be replaced with code to pick up the coin
+            # move the arm to the bin, drop the coin, and return back to
+            # the initial position
+            print '{0} moving to {1} '.format(servo_num,self.coin_denom)
+            time.sleep(0.1)
+            #print '{0} dropping coin'.format(thread_num)
+            time.sleep(0.1)
+            #print '{0} moving back'.format(thread_num)
+            time.sleep(0.1)
+            #print '{0} arrived back'.format(thread_num)
+            self.servo_done += 1
 
-def servo_3():
-    time.sleep(random()/20) # random wait time to simulate real world start conditions
-    while IR.is_alive():
-        if synchro.IR:
-            synchro.letter_3 = retrieve_nowait(q3)
-            while True:
-                if synchro.letter_0 == synchro.letter_1 and synchro.letter_2 == synchro.letter_3 and synchro.letter_0 == synchro.letter_2:
-                    #synchro.IR = False
-                    print 3, synchro.letter_3, 3
-                    break
+    # this is temporary and is used only to simulate machine
+    # may be replaced or completely deleted.
+    def IR_sensor(self):
+        time.sleep(random()/20)
+        count = 0
+        while True:
+            rand = random()
+            if rand >= 0.8 and count <= 9:
+                count += 1
+                self.IR_count += 1
+                print 'IR count = {0}\n'.format(self.IR_count)
+            elif count > 9 and self.IR_count == 0:
+                self.run = False
+                break
+            else:
+                time.sleep(random()/20)
+################################################################################
 
-#######################################################
+# create events 
+servo_start = threading.Event() # is set to false
+servo_complete = threading.Event() # is set to false
 
-# fill all the queues
-put_in_q()
+# Create the coin queue
+coin_queue = Queue.Queue()
 
-# initiate synchro class
-synchro = synchro()
+# fill coin_queue
+for letter in items:
+    coin_queue.put_nowait(letter)
 
-# create threads
-IR = Thread(target = IR_sensor)
-servo0 = Thread(target = servo_0)
-servo1 = Thread(target = servo_1)
-servo2 = Thread(target = servo_2)
-servo3 = Thread(target = servo_3)
+# initiate class
+ServoThreads = servo_threads(4)
+
+
+# create the threads
+IR_thread = Thread(target = ServoThreads.IR_sensor)
+start_thread = Thread(target = ServoThreads.ServoStart)
+complete_thread = Thread(target = ServoThreads.ServoComplete)
+servo_0 = Thread(target = ServoThreads.servo, args=(0,))
+servo_1 = Thread(target = ServoThreads.servo, args=(1,))
+servo_2 = Thread(target = ServoThreads.servo, args=(2,))
+servo_3 = Thread(target = ServoThreads.servo, args=(3,))
 
 # start threads
-IR.start()
-servo0.start()
-servo1.start()
-servo2.start()
-servo3.start()
+IR_thread.start()
+start_thread.start()
+complete_thread.start()
+servo_0.start()
+servo_1.start()
+servo_2.start()
+servo_3.start()
 
 # join threads
-IR.join()
-servo0.join()
-servo1.join()
-servo2.join()
-servo3.join()
+IR_thread.join()
+start_thread.join()
+complete_thread.join()
+servo_0.join()
+servo_1.join()
+servo_2.join()
+servo_3.join()
