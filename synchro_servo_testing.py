@@ -55,6 +55,7 @@ class servo_threads():
             if self.IR_count > 0:
                 self.coin_denom = retrieve_nowait(coin_queue) # retrieve coin denomination from queue
                 servo_complete.clear() # clear previous set() of servo_complete
+                servo_pause.clear() # clear previus set() to prevent servos from looping 
                 servo_start.set() # set() so the servos can run
                 servo_complete.wait() # wait for all the servos to be completed
 
@@ -70,7 +71,9 @@ class servo_threads():
         '''
         while self.run:
             if self.servo_done == self.num_servos:
+                servo_start.clear() # prevent the servo event from running until next time 
                 self.servo_done = 0 # clear the completed servos
+                servo_pause.set() # set() to get servos to next loop
                 self.IR_count -= 1
                 servo_complete.set() # set() so ServoStart() may continue
 
@@ -90,19 +93,19 @@ class servo_threads():
         specified angle for the inital position.
         '''
         while self.run:
-            servo_start.wait() # waits for servo event to start
-
-            # This code needs to be replaced with code to pick up the coin
-            # move the arm to the bin, drop the coin, and return back to
-            # the initial position
-            print '{0} moving to {1} '.format(servo_num,self.coin_denom)
-            time.sleep(0.1)
-            #print '{0} dropping coin'.format(thread_num)
-            time.sleep(0.1)
-            #print '{0} moving back'.format(thread_num)
-            time.sleep(0.1)
-            #print '{0} arrived back'.format(thread_num)
-            self.servo_done += 1
+            if servo_start.isSet():
+                # This code needs to be replaced with code to pick up the coin
+                # move the arm to the bin, drop the coin, and return back to
+                # the initial position
+                print '{0}{1} '.format(servo_num,self.coin_denom)
+                time.sleep(0.1)
+                #print '{0} dropping coin'.format(thread_num)
+                time.sleep(0.1)
+                #print '{0} moving back'.format(thread_num)
+                time.sleep(0.1)
+                #print '{0} arrived back'.format(thread_num)
+                self.servo_done += 1
+                servo_pause.wait()
 
     # this is temporary and is used only to simulate machine
     # may be replaced or completely deleted.
@@ -111,10 +114,9 @@ class servo_threads():
         count = 0
         while True:
             rand = random()
-            if rand >= 0.8 and count <= 9:
+            if rand >= 0.95 and count <= 9:
                 count += 1
                 self.IR_count += 1
-                print 'IR count = {0}\n'.format(self.IR_count)
             elif count > 9 and self.IR_count == 0:
                 self.run = False
                 break
@@ -123,8 +125,9 @@ class servo_threads():
 ################################################################################
 
 # create events 
-servo_start = threading.Event() # is set to false
-servo_complete = threading.Event() # is set to false
+servo_start = threading.Event() # is set to False
+servo_complete = threading.Event() # is set to False
+servo_pause = threading.Event() # is set to False
 
 # Create the coin queue
 coin_queue = Queue.Queue()
@@ -163,4 +166,3 @@ servo_0.join()
 servo_1.join()
 servo_2.join()
 servo_3.join()
-
