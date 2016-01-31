@@ -40,17 +40,17 @@ class servo_threads():
 
 
     def ServoStart(self):
-    '''
-    DESCRIPTION:
-    Will only start performing actions once the IR sensor has been tripped.
-    When this occurs a coin denomination will be retrieved from the coin_queue.
-    The previous event of servo_complete will be set to False because the
-    current loop servos cannot be completed if the loop hasn't started yet.
-    The loop is then started with servo_start.set(), this sets the event value
-    to True. Then the funciton will wait until all the servos have completed
-    their loop, this is specified by the servo_complete event which is set to
-    True inside the ServoComplete function.    
-    '''
+        '''
+        DESCRIPTION:
+        Will only start performing actions once the IR sensor has been tripped.
+        When this occurs a coin denomination will be retrieved from the coin_queue.
+        The previous event of servo_complete will be set to False because the
+        current loop servos cannot be completed if the loop hasn't started yet.
+        The loop is then started with servo_start.set(), this sets the event value
+        to True. Then the funciton will wait until all the servos have completed
+        their loop, this is specified by the servo_complete event which is set to
+        True inside the ServoComplete function.    
+        '''
         while self.run:
             if self.IR_count > 0:
                 self.coin_denom = retrieve_nowait(coin_queue) # retrieve coin denomination from queue
@@ -60,14 +60,14 @@ class servo_threads():
 
 
     def ServoComplete(self):
-    '''
-    DESCRIPTION:
-    Will only start performing actions once all the servos have completed thier
-    current loop. When this happens the servo_done value is reset back to 0, to
-    signify that 0 servos have done thier loop. The IR_count value will be
-    decremented by 1 because one coin has been sorted and then the
-    servo_complete will be set to True allowing ServoStart to finish its loop.
-    '''
+        '''
+        DESCRIPTION:
+        Will only start performing actions once all the servos have completed thier
+        current loop. When this happens the servo_done value is reset back to 0, to
+        signify that 0 servos have done thier loop. The IR_count value will be
+        decremented by 1 because one coin has been sorted and then the
+        servo_complete will be set to True allowing ServoStart to finish its loop.
+        '''
         while self.run:
             if self.servo_done == self.num_servos:
                 self.servo_done = 0 # clear the completed servos
@@ -76,19 +76,19 @@ class servo_threads():
 
                 
     def servo(self, servo_num):
-    '''
-    INPUT:
-    thread_num  # The number of the servo in the range of [0,num_servos-1]
+        '''
+        INPUT:
+        thread_num  # The number of the servo in the range of [0,num_servos-1]
     
-    DESCRIPTION:
-    Will only start performing actions once the servo_start event is set to
-    True by the ServoStart function. Once the function is started it will
-    travel to servo_num's specified angle to pick up the coin, then travel
-    to servo_num's specified angle to have the arm above the proper bin,
-    travel to servo_num's specified angle to drop the coin, and then
-    travel back the the initial position by having the servo go to servo_num's
-    specified angle for the inital position.
-    '''
+        DESCRIPTION:
+        Will only start performing actions once the servo_start event is set to
+        True by the ServoStart function. Once the function is started it will
+        travel to servo_num's specified angle to pick up the coin, then travel
+        to servo_num's specified angle to have the arm above the proper bin,
+        travel to servo_num's specified angle to drop the coin, and then
+        travel back the the initial position by having the servo go to servo_num's
+        specified angle for the inital position.
+        '''
         while self.run:
             servo_start.wait() # waits for servo event to start
 
