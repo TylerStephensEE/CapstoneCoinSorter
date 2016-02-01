@@ -347,67 +347,9 @@ def robot_task()
 
 ################################################################################
 
-########## THREAD DEFINITIONS ##########
-# Functions that will be run as threads within the robot arm task thread
-
-def servo_0(angle):
-    servo_0 = servo('HS311', 11, ..., ...) # ENTER INFORMATION FOR SERVO
-    # Move to desired position
-    servo_0.smooth_move_to(angle)
-    
-    
-def servo_1(angle):
-    servo_1 = servo('MG995', 12, ..., ...) # ENTER INFORMATION FOR SERVO
-
-def servo_2(angle):
-    servo_2 = servo('HS311', 13, ..., ...) # ENTER INFORMATION FOR SERVO
-
-def servo_3(angle):
-    servo_3 = servo('SG90', 14, ..., ...) # ENTER INFORMATION FOR SERVO
-
-def servo_gripper():
-    servo_gripper = servo('SG90', 15, ..., ...) # ENTER INFORMATION FOR SERVO
-
 ##### Main Task #####
-	while True:
-	    if conveyor_task.isAlive()
-	    	if robot_coin_arrived:
-	    		robot_coin_arrived = False  # Make false immediately to avoid deleting an arrived coin. IR sensor 
-	    		coin_letter = retrieve_nowait(coin_queue)
-	    		theta_0 = coin_letter[0]
-	    		theta_1 = coin_letter[1]
-	    		theta_2 = coin_letter[2]
-	    		theta_3 = coin_letter[3]
-	    		
-	    		# Create threads
-	    		servo_0_thread = Thread(target = servo_0, args=(theta_0,)
-	    		servo_1_thread = Thread(target = servo_1, args=(theta_1,)
-	    		servo_2_thread = Thread(target = servo_2, args=(theta_2,)
-	    		servo_3_thread = Thread(target = servo_3, args=(theta_3,)
-            	
-            	# ADD CODE TO PICK UP COIN BEFORE MOVING TO DESIRE POSITION
-            	
-            	# Start threads causing robot arm to move to desired position
-            	servo_0_thread.start()
-            	servo_1_thread.start()
-            	servo_2_thread.start()
-            	servo_3_thread.start()
-            	
-            	# FIND A WAY TO DROP COIN BEFORE ROBOT ARM GOES BACK TO INITIAL POSITION
-            	
-            	# Join threads
-            	servo_0_thread.join()
-            	servo_1_thread.join()
-            	servo_2_thread.join()
-            	servo_3_thread.join()
-            	
-            	# run code to pick up coin
-            	# robot_arm_position(coin_letter) function
-            	# run code to drop coin
-            	# run code to return to initial position			
-        else:
-	        # run code to shutdown robot_task
-    return
+
+# PUT CODE HERE
 	
 ###############################################################################
 ###############################################################################
