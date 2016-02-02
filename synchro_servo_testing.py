@@ -13,7 +13,7 @@ def retrieve_nowait(q):
     return item  
 
 # create queue items
-items = ['A','B','C','D','E','F','G','H','I','J']
+items = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
 
 
 ################################################################################
@@ -30,7 +30,7 @@ of coins that have brokent the IR sensor beam. run is a boolean value
 that is True while the tasks are running and only set to False once the
 tasks have completed, ie the pragram is being shutdown.
 '''
-class servo_threads():
+class sync_servos():
     def __init__(self, num_servos):
         self.num_servos = num_servos
         self.coin_denom = None
@@ -39,7 +39,7 @@ class servo_threads():
         self.run = True
 
 
-    def ServoStart(self):
+    def run_servos(self):
         '''
         DESCRIPTION:
         Will only start performing actions once the IR sensor has been tripped.
@@ -60,7 +60,7 @@ class servo_threads():
                 servo_complete.wait() # wait for all the servos to be completed
 
 
-    def ServoComplete(self):
+    def stop_servos(self):
         '''
         DESCRIPTION:
         Will only start performing actions once all the servos have completed thier
@@ -75,10 +75,10 @@ class servo_threads():
                 self.servo_done = 0 # clear the completed servos
                 servo_pause.set() # set() to get servos to next loop
                 self.IR_count -= 1
-                servo_complete.set() # set() so ServoStart() may continue
+                servo_complete.set() # set() so run_servos() may continue
 
                 
-    def servo(self, servo_num):
+    def servos(self, servo_num):
         '''
         INPUT:
         thread_num  # The number of the servo in the range of [0,num_servos-1]
@@ -114,10 +114,10 @@ class servo_threads():
         count = 0
         while True:
             rand = random()
-            if rand >= 0.95 and count <= 9:
+            if rand >= 0.95 and count <= len(items)-1:
                 count += 1
                 self.IR_count += 1
-            elif count > 9 and self.IR_count == 0:
+            elif count > len(items)-1 and self.IR_count == 0:
                 self.run = False
                 break
             else:
@@ -137,17 +137,17 @@ for letter in items:
     coin_queue.put_nowait(letter)
 
 # initiate class
-ServoThreads = servo_threads(4)
+ServoThreads = sync_servos(4)
 
 
 # create the threads
 IR_thread = Thread(target = ServoThreads.IR_sensor)
-start_thread = Thread(target = ServoThreads.ServoStart)
-complete_thread = Thread(target = ServoThreads.ServoComplete)
-servo_0 = Thread(target = ServoThreads.servo, args=(0,))
-servo_1 = Thread(target = ServoThreads.servo, args=(1,))
-servo_2 = Thread(target = ServoThreads.servo, args=(2,))
-servo_3 = Thread(target = ServoThreads.servo, args=(3,))
+start_thread = Thread(target = ServoThreads.run_servos)
+complete_thread = Thread(target = ServoThreads.stop_servos)
+servo_0 = Thread(target = ServoThreads.servos, args=(0,))
+servo_1 = Thread(target = ServoThreads.servos, args=(1,))
+servo_2 = Thread(target = ServoThreads.servos, args=(2,))
+servo_3 = Thread(target = ServoThreads.servos, args=(3,))
 
 # start threads
 IR_thread.start()
