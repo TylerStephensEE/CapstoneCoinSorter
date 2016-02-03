@@ -211,7 +211,7 @@ class sync_servos():
                 servo_start.clear() # prevent the servo event from running until next time 
                 self.servo_done = 0 # clear the completed servos
                 servo_pause.set() # set() to get servos to next loop
-                IRsensor.IR_counter -= 1
+                IRsensor.IR_counter -= 1 ### NEEDS TO BE MADE GENERAL. Maybe add coin_sensor() object to input of function
                 servo_complete.set() # set() so run_servos() may continue
 
                 
@@ -242,12 +242,12 @@ class sync_servos():
 ################################################################################
 
 '''
-Kyle add a description for the class Coin_Sensor()
+Kyle add a description for the class coin_sensor()
 '''
-class Coin_Sensor():
+class coin_sensor():
     # A class to initialize the coin sensors and to create interupts when the beam is broken
     gpio_coin_sensor = 0
-    coin_still_there = 0
+    coin_still_there = False
     IR_counter = 0
 
     def __init__(self, sensor_gpio):
@@ -261,11 +261,11 @@ class Coin_Sensor():
         Kyle add a description for this function below
         '''
             if GPIO.input(channel):
-                if self.coin_still_there == 0:
+                if self.coin_still_there == False:
                     self.IR_counter += 1
-                    self.coin_still_there = 1
+                    self.coin_still_there = True
             else:
-                self.coin_still_there = 0
+                self.coin_still_there = False
 
         GPIO.add_event_detect(self.gpio_coin_sensor, GPIO.BOTH, callback=look_for_coin)
 
@@ -278,9 +278,9 @@ pwm.setPWMFreq(60)
 items = ['P','N','D','Q','L','T','U','P','N','D','Q','L','T','U']
 
 # create events 
-servo_start = threading.Event() # is set to False
-servo_complete = threading.Event() # is set to False
-servo_pause = threading.Event() # is set to False
+servo_start = threading.Event() # is set to False initially
+servo_complete = threading.Event() # is set to False initially
+servo_pause = threading.Event() # is set to False initially
 
 # Create the coin queue
 coin_queue = Queue.Queue()
@@ -290,7 +290,7 @@ for letter in items:
     coin_queue.put_nowait(letter)
 
 # create object
-IRsensor = Coin_Sensor(17)
+IRsensor = coin_sensor(17)
 
 # Create servos objects
 servo_object_0 = servo('HS311', 3, [170,595], [-90,90])
