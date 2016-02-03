@@ -189,7 +189,7 @@ class sync_servos():
         True inside the ServoComplete function.    
         '''
         while self.run:
-            if IRsensor.IR_counter > 0:
+            if robot_IR_sensor.IR_counter > 0:
                 self.coin_angles = robot_arm_position(retrieve_nowait(coin_queue)) # retrieve coin denomination from queue and convert to angle vector
                 servo_complete.clear() # clear previous set() of servo_complete
                 servo_pause.clear() # clear previus set() to prevent servos from looping 
@@ -211,7 +211,7 @@ class sync_servos():
                 servo_start.clear() # prevent the servo event from running until next time 
                 self.servo_done = 0 # clear the completed servos
                 servo_pause.set() # set() to get servos to next loop
-                IRsensor.IR_counter -= 1 ### NEEDS TO BE MADE GENERAL. Maybe add coin_sensor() object to input of function
+                robot_IR_sensor.IR_counter -= 1 ### NEEDS TO BE MADE GENERAL. Maybe add coin_sensor() object to input of function
                 servo_complete.set() # set() so run_servos() may continue
 
                 
@@ -290,7 +290,7 @@ for letter in items:
     coin_queue.put_nowait(letter)
 
 # create object
-IRsensor = coin_sensor(17)
+robot_IR_sensor = coin_sensor(17)
 
 # Create servos objects
 servo_object_0 = servo('HS311', 3, [170,595], [-90,90])
