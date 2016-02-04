@@ -34,12 +34,12 @@ the corresponding servos angle.
 '''
 def robot_arm_position(coin_letter):
     servo_angles = {'P': [-90,-90,-90,-90],
-                    'N': [-60,-60,-60,-60],
-                    'D': [-30,-30,-30,-30],
-                    'Q': [0,0,0,0],
-                    'L': [30,30,30,30],
-                    'T': [60,60,60,60],
-                    'U': [90,90,90,90],}
+                    'N': [90,90,90,90],
+                    'D': [-90,-90,-90,-90],
+                    'Q': [90,90,90,90],
+                    'L': [-90,-90,-90,-90],
+                    'T': [90,90,90,90],
+                    'U': [-45,-45,-45,-45],}
     
     return servo_angles[coin_letter]
     	# each of the values in the dictionary list will be the servo angle
@@ -176,7 +176,7 @@ class sync_servos():
         self.run = True
 
 
-    def run_servos(self):
+    def run_servos(self, IR_sensor_object):
         '''
         DESCRIPTION:
         Will only start performing actions once the IR sensor has been tripped.
@@ -189,7 +189,7 @@ class sync_servos():
         True inside the ServoComplete function.    
         '''
         while self.run:
-            if robot_IR_sensor.IR_counter > 0:
+            if IR_sensor_object.IR_counter > 0:
                 self.coin_angles = robot_arm_position(retrieve_nowait(coin_queue)) # retrieve coin denomination from queue and convert to angle vector
                 servo_complete.clear() # clear previous set() of servo_complete
                 servo_pause.clear() # clear previus set() to prevent servos from looping 
@@ -197,7 +197,7 @@ class sync_servos():
                 servo_complete.wait() # wait for all the servos to be completed
 
 
-    def stop_servos(self):
+    def stop_servos(self, IR_sensor_object):
         '''
         DESCRIPTION:
         Will only start performing actions once all the servos have completed thier
@@ -211,7 +211,7 @@ class sync_servos():
                 servo_start.clear() # prevent the servo event from running until next time 
                 self.servo_done = 0 # clear the completed servos
                 servo_pause.set() # set() to get servos to next loop
-                robot_IR_sensor.IR_counter -= 1 ### NEEDS TO BE MADE GENERAL. Maybe add coin_sensor() object to input of function
+                IR_sensor_object.IR_counter -= 1
                 servo_complete.set() # set() so run_servos() may continue
 
                 
@@ -241,14 +241,14 @@ class sync_servos():
 
 ################################################################################
 
+# A class to initialize the coin sensors and to create interupts when the beam is broken
 '''
 Kyle add a description for the class coin_sensor()
 '''
 class coin_sensor():
-    # A class to initialize the coin sensors and to create interupts when the beam is broken
     gpio_coin_sensor = 0
     coin_still_there = False
-    IR_counter = 0
+    IR_counter = 0  
 
     def __init__(self, sensor_gpio):
         self.gpio_coin_sensor = sensor_gpio
@@ -256,10 +256,10 @@ class coin_sensor():
         GPIO.setup(self.gpio_coin_sensor, GPIO.IN, GPIO.PUD_DOWN)
 
         def look_for_coin(channel):
-        '''
-        Kyle add information about INPUT:
-        Kyle add a description for this function below
-        '''
+            '''
+            Kyle add information about INPUT:
+            Kyle add a description for this function below
+            '''
             if GPIO.input(channel):
                 if self.coin_still_there == False:
                     self.IR_counter += 1
@@ -270,6 +270,7 @@ class coin_sensor():
         GPIO.add_event_detect(self.gpio_coin_sensor, GPIO.BOTH, callback=look_for_coin)
 
 #############################################################################
+
 # Set PWM frequency and I2C address
 pwm = PWM(0x40)
 pwm.setPWMFreq(60)
@@ -278,9 +279,9 @@ pwm.setPWMFreq(60)
 items = ['P','N','D','Q','L','T','U','P','N','D','Q','L','T','U']
 
 # create events 
-servo_start = threading.Event() # is set to False initially
-servo_complete = threading.Event() # is set to False initially
-servo_pause = threading.Event() # is set to False initially
+servo_start = threading.Event() # is set to False
+servo_complete = threading.Event() # is set to False
+servo_pause = threading.Event() # is set to False
 
 # Create the coin queue
 coin_queue = Queue.Queue()
@@ -289,7 +290,7 @@ coin_queue = Queue.Queue()
 for letter in items:
     coin_queue.put_nowait(letter)
 
-# create object
+# create sensor object
 robot_IR_sensor = coin_sensor(17)
 
 # Create servos objects
@@ -302,8 +303,8 @@ servo_object_3 = servo('SG90', 15, [200,650], [-90,90])
 ServoThreads = sync_servos(4)
 
 # create the threads
-start_thread = Thread(target = ServoThreads.run_servos)
-complete_thread = Thread(target = ServoThreads.stop_servos)
+start_thread = Thread(target = ServoThreads.run_servos, args=(robot_IR_sensor,))
+complete_thread = Thread(target = ServoThreads.stop_servos, args=(robot_IR_sensor,))
 servo_0 = Thread(target = ServoThreads.servos, args=(0,servo_object_0,))
 servo_1 = Thread(target = ServoThreads.servos, args=(1,servo_object_1,))
 servo_2 = Thread(target = ServoThreads.servos, args=(2,servo_object_2,))
@@ -326,3 +327,4 @@ servo_2.join()
 servo_3.join()
 
 GPIO.cleanup()
+
