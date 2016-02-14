@@ -1,8 +1,9 @@
 import threading
-import queue
-import cv2
+import Queue
+#import cv2
 import os
-import numpy as np
+#import numpy as np
+import time
 
 ################################################################################
 ################################################################################
@@ -63,17 +64,16 @@ class servo():
 
 
     def move_to(self,angle_value):
-    '''
-    INPUT:
-    angle_value  # value for the angle you want the servo to travel to as long as
-                   it is within the degree_range
-
-    DESCRIPTION:
-    Given a angle_value this will calculate the required tick value for the PWM driver
-    and move the servo to that value. If the angle_value given as input is not within
-    the degree_range then the servo will stay at its current position
-    '''
-
+        '''
+        INPUT:
+        angle_value  # value for the angle you want the servo to travel to as long as
+                    it is within the degree_range
+        
+        DESCRIPTION:
+        Given a angle_value this will calculate the required tick value for the PWM driver
+        and move the servo to that value. If the angle_value given as input is not within
+        the degree_range then the servo will stay at its current position
+        '''
         # Determining linear function for converting angle_value to tick_value for PWM
         tick_diff = self.tick_range[1]-self.tick_range[0]                    # rise 
         degree_diff = float(abs(self.degree_range[0]-self.degree_range[1]))  # run
@@ -94,26 +94,25 @@ class servo():
 
 
     def smooth_move_to(self,angle_value):
-    '''
-    INPUT:
-    angle_value # value for the angle you want the servo to travel to as long as
+        '''
+        INPUT:
+        angle_value # value for the angle you want the servo to travel to as long as
                   it is within the degree_range. Can also be thought of as the
                   final angle value.
 
-    DESCRIPTION:
-    Given and angle_value this will move the servo from its initial position to the desired
-    final value given by angle_value. However it will move the servo in such a manner to
-    control its speed and acceleration so that both are smooth functions preventing quick
-    jerky motion of the servo.
-
-    The position vs. time function that describes the smooth motion of the servo is x(t) = 1/(1+exp(-t)),
-    this is known as the sigmoid function. By taking derivatives, W.R.T. time, the velocity and acceleration
-    curves can be found too. 
-    '''
-
+        DESCRIPTION:
+        Given and angle_value this will move the servo from its initial position to the desired
+        final value given by angle_value. However it will move the servo in such a manner to
+        control its speed and acceleration so that both are smooth functions preventing quick
+        jerky motion of the servo.
+    
+        The position vs. time function that describes the smooth motion of the servo is x(t) = 1/(1+exp(-t)),
+        this is known as the sigmoid function. By taking derivatives, W.R.T. time, the velocity and acceleration
+        curves can be found too. 
+        '''
         # 20 point vector for mapping angle_value for controlling the acceleration (arbitrarily chosen length of list)
-        sigmoid_mapping_vector = [0.0011, 0.0023, 0.0046, 0.0094, 0.0191, 0.0384, 0.0755, 0.1431, 0.2547, 0.4115,
-                                  0.5885, 0.7453, 0.8569, 0.9245, 0.9616, 0.9809, 0.9906, 0.9954, 0.9977, 0.9989]
+        sigmoid_mapping_vector = [0.0011, 0.0023, 0.0046, 0.0094, 0.0191, 0.0384, 0.0755, 0.1431,
+                                  0.2547, 0.4115, 0.5885, 0.7453, 0.8569, 0.9245, 0.9616, 0.9809, 0.9906, 0.9954, 0.9977, 0.9989]
 
         # Time delay vector to smooth motion of servo. Last value is 0 because the servo has reached its final position therefore
         # no need to delay  
@@ -162,8 +161,8 @@ needed to run the Coin Sorter.
 INPUT:
 shutdown_bit  # A global variable that will only change value when a push 
                 button is pressed to shutdown the machine.
-			   
-input_coin  # A sensor to know when a coin falls onto conveyor.
+               
+photos_per_coin  # How many photos of each coin to add to the queue for each coin that is deteced.
 
 QUEUES: (The queues this task will interact with)
 photo_queue  # is to hold the photos of the coins. conveyor_task will only be
@@ -184,27 +183,77 @@ cause shutdown of the task.
 
 See flowchart "conveyor_task" for more information
 '''
-def conveyor_task(shutdown_bit, input_coin):
+def conveyor_task(shutdown_bit, photos_per_coin):
+    ##initialize IR_sensor
+    input_coin_sensor = True  ##seeing as this sensor is not going to be used by any other task it should be initialized here.
+    
+    
+    count_coins = 0
+    photo = "P"
+    
     while True:
-	    if shutdown_bit == True:
-	        # run code to shutdown conveyor_task
-        else:
-	        # run normal operation code
+        if shutdown_bit == True:
+            # run code to shutdown conveyor_task
+            print("shutting down")
+        else :
+            # run normal operation code     # poll IR_sensor
+            if not input_coin_sensor :
+                continue
+            
+            ##just for testing, figure out which coin to put on queue.
+            if count_coins == 0 :
+                photo = "P"
+            elif count_coins == 1 :
+                photo = "D"
+            elif count_coins == 2 :
+                photo = "N"
+            elif count_coins == 3 :
+                photo = "Q"
+            
+            ###move forward conveyor for photo.  Here we take 3 photos to make sure one has coin in window to account for random placement on belt.
+            print("move conveyor forward\n")
+            photo_queue.put_nowait(photo + "    ")
+            for n in range(photos_per_coin - 1):
+                #inch forward a bit.
+                photo_queue.put_nowait(" " + photo + "   ")
+            
+            count_coins += 1
+            if count_coins == 4 :
+                break;
     return
 
 ###############################################################################
 
 
 ##### Photo Analysis Task #####
+
+## photo analysis functions ##
+def check_photo(photo):
+    if photo == "P" :
+        coin = "P"
+    elif photo == "D" :
+        coin = "D"
+    elif photo == "N" :
+        coin = "N"
+    elif photo == "Q" :
+        coin = "Q"
+    else:
+        coin = None
+    return coin
+    
+def populate_queues(coin):
+    coin_queue.put_nowait(coin)
+    track_queue.put_nowait(coin)
+    led_queue.put_nowait(coin)
 '''
 QUEUES: (The queues this task will interact with)
 photo_queue  # A queue that is to hold the photo of the coins. 
                photo_analysis_queue will remove the photos from the tail of the
-			   queue.
+               queue.
 
 coin_queue  # A queue that is to hold the letter of the coins. 
               photo_analysis_task will place the letters at the head of the 
-			  coin_queue.
+              coin_queue.
 
 
 DESCRIPTION:
@@ -215,12 +264,41 @@ at the head of the coin_queue, and repeat from beginning.
 
 See flowchart "photo_analysis_task" for  more information
 '''
-def photo_analysis_task():
-    while robot_task.isAlive() # run until robot task is joined
+def photo_analysis_task(photos_per_coin):
+    #array of photos per coin
+    photo_array = [None]*photos_per_coin
+    photos_in_array = 0
     
+    while t_rob.isAlive(): # run until robot task is joined
+        photo_array[0] = retrieve_nowait(photo_queue)
+        if photo_array[0] is None:
+            continue
+        photos_in_array += 1
+        
+        while not (photos_in_array == photos_per_coin) :  #attempt to retreive photo until get all photos of one coin
+            photo_array[photos_in_array] = retrieve_nowait(photo_queue)
+            
+            if not(photo_array[photos_in_array] is None):
+                photos_in_array += 1
+            
+        for n in range(photos_per_coin):
+            #run image formatting such as edge detection. to simulate I just trim string
+            photo = photo_array[n].strip()
+            
+            #Try to analyze for coin, if failed to analyze try next otherwise photo.
+            coin_type = check_photo(photo)
+            
+            if not (coin_type is None):
+                populate_queues(coin_type)
+                photos_in_array = 0
+                break
+            elif n == (photos_per_coin - 1):
+                populate_queues("U")
+                photos_in_array = 0
+            
     return
-	
-###############################################################################			
+    
+###############################################################################            
 
 
 ##### LED Matrix Task #####
@@ -228,11 +306,11 @@ def photo_analysis_task():
 QUEUES: (The queues this task will interact with)
 coin_queue  # A queue that is to hold the letter of the coins. led_matrix_task
               will only read items from the head of the queue. Will have to
-			  make another queue that is a copy of the coin_queue so this task
-			  can read only, since reading in queue is impossible as far as I 
-			  know. My current idea for the copy of coin_queue is to only hold
-			  1 item in it at most.
-			  
+              make another queue that is a copy of the coin_queue so this task
+              can read only, since reading in queue is impossible as far as I 
+              know. My current idea for the copy of coin_queue is to only hold
+              1 item in it at most.
+              
 
 OUTPUT:
 None, only reads queue
@@ -248,12 +326,13 @@ corresponding letter for the coin on the LED matrix then repeat from beginning.
 see flowchart "led_matrix_task" for more information
 '''
 def led_matrix_task():
-    while robot_task.isAlive()  # run until robot task is joined
-        if coin_queue has item IN it # this line is not code
-		    # from input from head of queue light up correct LED's on the Matrix
+    while robot_task.isAlive():  # run until robot task is joined
+        if coin_queue_has_item_IN_it : # this line is not code
+            # from input from head of queue light up correct LED's on the Matrix
+            print("LED task")
     return
-	
-###############################################################################			
+    
+###############################################################################            
 
 
 ##### Track Task #####
@@ -274,13 +353,14 @@ number of coins has passed the sensor.
 see flowchart "track_task" for more information
 '''
 def track_task(ir_track_sensor):
-    while robot_task.isAlive()  # run until robot task is joined
-	    if coin passed sensor:  # this line is not code
-		    # flip servo to previous position
+    while robot_task.isAlive():  # run until robot task is joined
+        if coin_passed_sensor:  # this line is not code
+            # flip servo to previous position
+            print("coin task")
     return
-	
+    
 ###############################################################################
-	
+    
 
 ##### Robot Arm Task #####
 '''
@@ -308,54 +388,100 @@ sorted, will cause a shutdown of the task.
 
 see flowchart "robot_task" for more information
 '''
-def robot_task()
+def robot_task():
 
 ########## FUNCTION DEFINITIONS ##########
 
-	##### Robot Arm Servo Angles #####
-	'''
-	INPUT:
-	coin_letter  # This will be the letter of the coin that is ready to be sorted.
+    ##### Robot Arm Servo Angles #####
+    '''
+    INPUT:
+    coin_letter  # This will be the letter of the coin that is ready to be sorted.
 
-	OUTPUT:
-	may need to output PWM signal value for all the servos so they stay in a 
-	constant position. This may not be necessary if no PWM singla doesn't change
-	servo position and servos apply torque with no PWM signal
+    OUTPUT:
+    may need to output PWM signal value for all the servos so they stay in a 
+    constant position. This may not be necessary if no PWM singla doesn't change
+    servo position and servos apply torque with no PWM signal
 
-	DESCRIPTION:
-	With the inputted coin_letter this will return the servo angle values for the
-	arm to be in position above the coin_letter bin. coin_letter is the key to the
-	dictionary which will contain a 1x4 row vector where each column 'i' represents
-	the corresponding servos angle. 
-	'''
-	def robot_arm_position(coin_letter):
-	    servo_angles = {'P': [0,1,2,3],
-	                    'N': [4,5,6,7],
-	                    'D': [8,9,10,11],
-	                    'Q': [12,13,14,15],
-	                    'L': [16,17,18,19],
-	                    'T': [20,21,22,23],
-	                    'U': [24,25,26,27]}
+    DESCRIPTION:
+    With the inputted coin_letter this will return the servo angle values for the
+    arm to be in position above the coin_letter bin. coin_letter is the key to the
+    dictionary which will contain a 1x4 row vector where each column 'i' represents
+    the corresponding servos angle. 
+    '''
+    def robot_arm_position(coin_letter):
+        servo_angles = {'P': [0,1,2,3],
+                        'N': [4,5,6,7],
+                        'D': [8,9,10,11],
+                        'Q': [12,13,14,15],
+                        'L': [16,17,18,19],
+                        'T': [20,21,22,23],
+                        'U': [24,25,26,27]}
     
-		return servo_angles[coin_letter]
-    	# each of the values in the dictionary list will be the servo angle
-    	# ex) for P 0 = servo_0 angle, 1 = servo_1 angle ...
-    	# The servo angles must be converted from inverse kinematics definition
-    	# to servo angle definition. ie) the zeros may be defined differently 
+        return servo_angles[coin_letter]
+        # each of the values in the dictionary list will be the servo angle
+        # ex) for P 0 = servo_0 angle, 1 = servo_1 angle ...
+        # The servo angles must be converted from inverse kinematics definition
+        # to servo angle definition. ie) the zeros may be defined differently 
 
 ################################################################################
 
 ##### Main Task #####
-	while True:
-	    if conveyor_task.isAlive() 
+    while True:
+        if t_con.isAlive(): 
+            #sense coin  just for testing queues I just wait and then assume coin has arrived
+            time.sleep(0.5)
+            letter = retrieve_nowait(coin_queue)
+            
+            if letter == None : #this would be the case where a coin is sensed but no photo was analysed.  PROBLEM!
+                continue
+            print(letter)
+            
             # run code to pick up coin
             # robot_arm_position(coin_letter) function
             # run code to drop coin
-            # run code to return to initial position			
+            # run code to return to initial position            
         else:
-	        # run code to shutdown robot_task
+            # run code to shutdown robot_task
+            print("Robot shutdown sequence")
+            letter = retrieve_nowait(coin_queue)
+            while not (letter is None) :
+                print(letter)
+                #sense coin  just for testing queues I just wait and then assume coin has arrived
+                time.sleep(0.5)
+                
+                letter = retrieve_nowait(coin_queue)
+                #should check if letter is none but while is doing it for me right nowS
+            break
     return
-	
+    
 ###############################################################################
 ###############################################################################
+
+### main code to run ###
+
+# initialize queues
+photo_queue = Queue.Queue(0)
+coin_queue = Queue.Queue(0)
+track_queue = Queue.Queue(0)
+led_queue = Queue.Queue(0)
+
+# initialize other variables
+photos_per_coin = 3
+
+## Start tasks threading ##
+t_con = threading.Thread(target=conveyor_task, args = (False,photos_per_coin))
+t_an = threading.Thread(target=photo_analysis_task, args = (photos_per_coin,))
+t_rob = threading.Thread(target=robot_task, args = ())
+
+    #thread.start_new_thread( photo_analysis_task, (photos_per_coin, ) )
+    #thread.start_new_thread( robot_task, ( ) )
+t_con.start()
+t_rob.start()
+t_an.start()
+
+
+t_con.join()
+#print(":"+retrieve_nowait(photo_queue)+":")
+
+
 
