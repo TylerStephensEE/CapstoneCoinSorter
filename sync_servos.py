@@ -231,11 +231,24 @@ class sync_servos():
         '''
         while self.run:
             if servo_start.isSet():
-                # This code needs to be replaced with code to pick up the coin
-                # move the arm to the bin, drop the coin, and return back to
-                # the initial position
-                print ' {0}_{1} '.format(servo_num,self.coin_angles[servo_num])
-                servo_object.smooth_move_to(self.coin_angles[servo_num])
+                # Code to pick up coin 
+                servo_object.smooth_move_to(self.pick_up_angles[servo_num])    # create pick_up_angles matrix
+                self.pick_up_done += 1    # increment counter (place decleration at top of class)
+                while self.pick_up_done < self.num_serovs
+                    # wait for all servos to be completed
+                self.pick_up_done = 0 # reset counter
+                # have finger servo grip coin
+                
+                # Code to move to bin location and drop coin
+                print ' {0}_{1} '.format(servo_num,self.coin_angles[servo_num]) # debugging
+                servo_object.smooth_move_to(self.coin_angles[servo_num]) # move to bin location
+                self.ready_to_drop += 1    # increment counter (place decleration at top of class)
+                while self.ready_to_drop < self.num_servos
+                    # wait for all servos to be completed
+                # have finger servo drop coint
+                
+                # Code to return to initial position
+                servo_object.smooth_move_to(self.initial_pos_angles(servo_num]) # create initial_pos_angles matrix
                 self.servo_done += 1
                 servo_pause.wait()
 
