@@ -48,6 +48,19 @@ def robot_arm_position(coin_letter):
     	# to servo angle definition. ie) the zeros may be defined differently 
     	# None is added to handel retrieveing item from empty queue, this should not happen
 
+##### Robot Arm Pick Up Angles #####
+'''
+INPUT:
+servo_num  # The number of the servo
+
+DESCRIPTION:
+Given the servo_num it will provide the angle for the servo to be in the
+position to pick up a coin
+'''
+def pick_up_angles(servo_num):
+    pick_up_angle = [80,45,10,35]
+    
+    return pick_up_angle[servo_num]
 
 ##### Servo Class for moving servos #####
 class servo():
@@ -174,6 +187,10 @@ class sync_servos():
         self.coin_angles = None
         self.servo_done = 0
         self.run = True
+        self.grip_coin = False
+        self.drop_coin = False
+        self.pick_up_done = 0
+        self.ready_to_drop = 0
 
 
     def run_servos(self, IR_sensor_object):
@@ -213,7 +230,18 @@ class sync_servos():
                 servo_pause.set() # set() to get servos to next loop
                 IR_sensor_object.IR_counter -= 1
                 servo_complete.set() # set() so run_servos() may continue
-
+                
+            elif self.pick_up_done == self.num_servos:
+                self.grip_coin = True
+                time.sleep(0.2)  # wait for finger to grip coin
+                self.pick_up_done = 0  # reset counter
+                self.grip_coin = False
+                
+            elif self.ready_to_drop == self.num_servos:
+                self.drop_coin = True
+                time.sleep(0.2)  # wait for finger to drop con
+                self.ready_to_drop = 0  # reset counter
+                self.drop_coin = False
                 
     def servos(self, servo_num,servo_object):
         '''
@@ -232,24 +260,46 @@ class sync_servos():
         while self.run:
             if servo_start.isSet():
                 # Code to pick up coin 
-                servo_object.smooth_move_to(self.pick_up_angles[servo_num])    # create pick_up_angles matrix
-                self.pick_up_done += 1    # increment counter (place decleration at top of class)
-                while self.pick_up_done < self.num_serovs
-                    # wait for all servos to be completed
-                self.pick_up_done = 0 # reset counter
-                # have finger servo grip coin
+                servo_object.smooth_move_to(self.pick_up_angles([servo_num])
+                self.pick_up_done += 1  # the servo has moved to the pick up location
+                
+                while self.pick_up_done > 0:
+                    # Wait for finger to grip coin
                 
                 # Code to move to bin location and drop coin
                 print ' {0}_{1} '.format(servo_num,self.coin_angles[servo_num]) # debugging
                 servo_object.smooth_move_to(self.coin_angles[servo_num]) # move to bin location
-                self.ready_to_drop += 1    # increment counter (place decleration at top of class)
-                while self.ready_to_drop < self.num_servos
-                    # wait for all servos to be completed
-                # have finger servo drop coint
+                self.ready_to_drop += 1  # the servo has moved to position to drop the coin
                 
-                # Code to return to initial position
-                servo_object.smooth_move_to(self.initial_pos_angles(servo_num]) # create initial_pos_angles matrix
+                while self.ready_to_drop > 0:
+                    # wait for finger to drop coin
+                
                 self.servo_done += 1
+                servo_pause.wait()
+                
+                
+    def servo_finger(self,servo_object):
+        '''
+        INPUT:
+        servo_object  # The particular instance of the servo that operates the 
+                        finger of the robot arm
+        
+        DESCRIPTION:
+        Opens and closes the servo finger to be able to pick up a coin. Is 
+        synchronized with the other servos of the robot arm so the operation of 
+        the finger occurs when the arm is in position to pick up the coin or 
+        drop the coin
+        '''
+        servo_object.move_to(-45)  # Open finger
+        while self.run:
+            if servo_start.isSet():
+                while self.grip_coin == False:
+                    # wait for arm to be in position
+                servo_object.move_to(-2)  # close finger
+                
+                while self.drop_coin == False:
+                    # wait for arm to be in position
+                servo_object.move_to(-45)  # open finger
                 servo_pause.wait()
 
 ################################################################################
@@ -307,10 +357,11 @@ for letter in items:
 robot_IR_sensor = coin_sensor(17)
 
 # Create servos objects
-servo_object_0 = servo('HS311', 3, [170,595], [-90,90])
-servo_object_1 = servo('HS311', 7, [170,615], [-90,90])
-servo_object_2 = servo('SG90', 11, [200,650], [-90,90])
-servo_object_3 = servo('SG90', 15, [200,650], [-90,90])
+servo_object_0 = servo('HS311', 0, [170,595], [-90,90])
+servo_object_1 = servo('MG995', 1, [170,615], [-90,90]) ### UPDATE TO CORRECT INFORMATION
+servo_object_2 = servo('HS311', 2, [170,595], [-90,90])
+servo_object_3 = servo('SG90', 3, [200,650], [-90,90])
+servo_object_4 = servo('SG90', 4, [200,650], [-90,90])
 
 # initiate sync class
 ServoThreads = sync_servos(4)
@@ -322,6 +373,7 @@ servo_0 = Thread(target = ServoThreads.servos, args=(0,servo_object_0,))
 servo_1 = Thread(target = ServoThreads.servos, args=(1,servo_object_1,))
 servo_2 = Thread(target = ServoThreads.servos, args=(2,servo_object_2,))
 servo_3 = Thread(target = ServoThreads.servos, args=(3,servo_object_3,))
+servo_4 = Thread(target = ServoThreads.servo_finger, args=(servo_object_4)) # servo finger
 
 # start threads
 start_thread.start()
@@ -330,6 +382,7 @@ servo_0.start()
 servo_1.start()
 servo_2.start()
 servo_3.start()
+servo_4.start()
 
 # join threads
 start_thread.join()
@@ -338,6 +391,7 @@ servo_0.join()
 servo_1.join()
 servo_2.join()
 servo_3.join()
+servo_4.join()
 
 GPIO.cleanup()
 
